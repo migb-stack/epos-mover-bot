@@ -32,7 +32,7 @@ CHANNELS = {
 }
 
 # Channel-ID, in den ALLE User verschoben werden (Sammel-Button)
-MAIN_CHANNEL_ID = 1457420470868774937
+MAIN_CHANNEL_ID = 1457422706692591637
 
 # Rolle, die den Button verwenden darf (Name der Admin-Rolle)
 ADMIN_ROLE_NAME = "Offizier"
