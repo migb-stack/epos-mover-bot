@@ -2,6 +2,9 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
+import os
+bot.run(os.environ.get("DISCORD_TOKEN"))
+
 intents = discord.Intents.default()
 intents.members = True
 intents.voice_states = True
@@ -145,6 +148,3 @@ class AdminMoveView(discord.ui.View):
             summary += "\n\n**Fehler:**\n" + "\n".join(errors)
 
         await interaction.followup.send(summary, ephemeral=True)
-
-import os
-bot.run(os.environ.get("DISCORD_TOKEN"))
