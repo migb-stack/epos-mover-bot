@@ -1,15 +1,14 @@
+import os
 import discord
 from discord.ext import commands
 from discord import app_commands
-
-import os
-bot.run(os.environ.get("DISCORD_TOKEN"))
 
 intents = discord.Intents.default()
 intents.members = True
 intents.voice_states = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
+
 
 # ─────────────────────────────────────────────
 # KONFIGURATION – hier anpassen
@@ -40,11 +39,9 @@ ADMIN_ROLE_NAME = "Offizier"
 
 # ─────────────────────────────────────────────
 
-# Hilfsfunktion: Admin-Check
 def is_admin(member: discord.Member) -> bool:
     return any(r.name == ADMIN_ROLE_NAME for r in member.roles)
 
-# Hilfsfunktion: User verschieben und Ergebnis sammeln
 async def move_users(guild, user_ids, target_channel):
     results, errors = [], []
     for user_id in user_ids:
@@ -62,11 +59,8 @@ async def move_users(guild, user_ids, target_channel):
             errors.append(f"❌ Kein Zugriff auf {member.display_name}.")
     return results, errors
 
-# ─────────────────────────────────────────────
-
 @bot.event
 async def on_ready():
-    # Persistent View beim Start registrieren, damit Buttons nach Neustart funktionieren
     bot.add_view(AdminMoveView())
     print(f"✅ Bot online als {bot.user}")
     await bot.tree.sync()
@@ -76,35 +70,26 @@ async def move_panel(interaction: discord.Interaction):
     if not is_admin(interaction.user):
         await interaction.response.send_message("❌ Keine Berechtigung.", ephemeral=True)
         return
-
     view = AdminMoveView()
     await interaction.response.send_message(
-        "🚀 **Teams verteilen** – verteilt Raider in 2 Channels"
-        "🔁 **Alle zusammen** – Alle in den Raid-Channel",
+        "🎮 **Team-Verteilung**\n"
+        "🚀 **Teams verteilen** – verteilt alle User auf Channel A & B\n"
+        "🔁 **Alle zusammen** – verschiebt alle in den Haupt-Channel",
         view=view
     )
 
-# ─────────────────────────────────────────────
-
 class AdminMoveView(discord.ui.View):
     def __init__(self):
-        super().__init__(timeout=None)  # Kein Timeout → Button bleibt dauerhaft aktiv
+        super().__init__(timeout=None)
 
-    # Button 1: Teams auf A/B/C/D verteilen
-    @discord.ui.button(
-        label="🚀 Teams verteilen",
-        style=discord.ButtonStyle.danger,
-        custom_id="btn_distribute"  # Feste ID → überlebt Bot-Neustart
-    )
+    @discord.ui.button(label="🚀 Teams verteilen", style=discord.ButtonStyle.danger, custom_id="btn_distribute")
     async def distribute_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not is_admin(interaction.user):
             await interaction.response.send_message("❌ Keine Berechtigung.", ephemeral=True)
             return
-
         await interaction.response.defer(ephemeral=True)
         guild = interaction.guild
         all_results, all_errors = [], []
-
         for group, user_ids in USER_GROUPS.items():
             target_channel = guild.get_channel(CHANNELS[group])
             if not target_channel:
@@ -113,38 +98,27 @@ class AdminMoveView(discord.ui.View):
             results, errors = await move_users(guild, user_ids, target_channel)
             all_results.extend(results)
             all_errors.extend(errors)
-
         summary = "**Ergebnis:**\n" + "\n".join(all_results)
         if all_errors:
             summary += "\n\n**Fehler:**\n" + "\n".join(all_errors)
-
         await interaction.followup.send(summary, ephemeral=True)
 
-    # Button 2: Alle User in einen Channel sammeln
-    @discord.ui.button(
-        label="🔁 Alle zusammen",
-        style=discord.ButtonStyle.primary,
-        custom_id="btn_collect"  # Feste ID → überlebt Bot-Neustart
-    )
+    @discord.ui.button(label="🔁 Alle zusammen", style=discord.ButtonStyle.primary, custom_id="btn_collect")
     async def collect_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not is_admin(interaction.user):
             await interaction.response.send_message("❌ Keine Berechtigung.", ephemeral=True)
             return
-
         await interaction.response.defer(ephemeral=True)
         guild = interaction.guild
         target_channel = guild.get_channel(MAIN_CHANNEL_ID)
-
         if not target_channel:
             await interaction.followup.send("❌ Haupt-Channel nicht gefunden!", ephemeral=True)
             return
-
-        # Alle User aus allen Gruppen zusammenführen
         all_user_ids = [uid for ids in USER_GROUPS.values() for uid in ids]
         results, errors = await move_users(guild, all_user_ids, target_channel)
-
         summary = f"**Alle in {target_channel.name}:**\n" + "\n".join(results)
         if errors:
             summary += "\n\n**Fehler:**\n" + "\n".join(errors)
-
         await interaction.followup.send(summary, ephemeral=True)
+
+bot.run(os.environ.get("DISCORD_TOKEN"))
